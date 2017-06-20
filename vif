@@ -1,31 +1,47 @@
 #!/bin/bash
 
-if [ -n "`echo $1 | grep :`" ]; then
+if [ -n "`echo $1 | grep :`" ] ; then
   SEARCH=`echo $1 | sed 's/:[^:]*$//'`
   LINE_SELECTOR=:`echo $1| sed 's/^[^:]*://'`
 else
   SEARCH=$1
 fi;
 
-RESULTS=($(find -name "$SEARCH"))
-
-if [ -z "$RESULTS" ] ; then
-  echo "error: no matches for [$SEARCH]"
-  exit 1
-fi;
-
-if [ -n "${RESULTS[1]}" ] ; then
-  I=1
-  for OPTION in "${RESULTS[@]}"; do
-    echo [$I] $OPTION
-    I=$((I+1))
-  done;
-
-  printf "vim "
-  read SELECTION
+if [ -n "`echo $SEARCH | grep /`" ] ; then
+  # handle paths from git diffs starting a/ or b/
+  if [ -f "$SEARCH" ] ; then
+    RESULTS[0]="$SEARCH"
+  elif [[ "$SEARCH" == a/* ]] || [[ "$SEARCH" == b/* ]] ; then
+    POTENTIAL_PATH="` echo $SEARCH | cut -c 3-`"
+    if [ -f "$POTENTIAL_PATH" ] ;
+      then RESULTS[0]=$POTENTIAL_PATH
+    fi;
+  fi;
+  if [ -z "${RESULTS[0]}" ] ; then
+    echo "error: no direct match for [$SEARCH]"
+    exit 1
+  fi;
 else
-  SELECTION=1
-  echo 1
+  RESULTS=($(find -name "$SEARCH"))
+
+  if [ -z "$RESULTS" ] ; then
+    echo "error: no matches for [$SEARCH]"
+    exit 1
+  fi;
+
+  if [ -n "${RESULTS[1]}" ] ; then
+    I=1
+    for OPTION in "${RESULTS[@]}"; do
+      echo [$I] $OPTION
+      I=$((I+1))
+    done;
+
+    printf "vim "
+    read SELECTION
+  else
+    SELECTION=1
+    echo 1
+  fi;
 fi;
 
 COMMAND="vim ${RESULTS[$((SELECTION-1))]}$LINE_SELECTOR"
