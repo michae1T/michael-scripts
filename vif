@@ -1,0 +1,37 @@
+#!/bin/bash
+
+if [ -n "`echo $1 | grep :`" ]; then
+  SEARCH=`echo $1 | sed 's/:[^:]*$//'`
+  LINE_SELECTOR=:`echo $1| sed 's/^[^:]*://'`
+else
+  SEARCH=$1
+fi;
+
+RESULTS=($(find -name "$SEARCH"))
+
+if [ -z "$RESULTS" ] ; then
+  echo "error: no matches for [$SEARCH]"
+  exit 1
+fi;
+
+if [ -n "${RESULTS[1]}" ] ; then
+  I=1
+  for OPTION in "${RESULTS[@]}"; do
+    echo [$I] $OPTION
+    I=$((I+1))
+  done;
+
+  printf "vim "
+  read SELECTION
+else
+  SELECTION=1
+  echo 1
+fi;
+
+COMMAND="vim ${RESULTS[$((SELECTION-1))]}$LINE_SELECTOR"
+
+echo -en "\033[1A\033[2K"
+echo "> $COMMAND"
+
+exec $COMMAND
+
