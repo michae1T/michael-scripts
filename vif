@@ -1,28 +1,8 @@
 #!/bin/bash
 
-if [ -n "`echo $1 | grep :`" ] ; then
-  SEARCH=`echo $1 | sed 's/:[^:]*$//'`
-  LINE_SELECTOR=:`echo $1| sed 's/^[^:]*://'`
-else
-  SEARCH=$1
-fi;
 
-if [ -n "`echo $SEARCH | grep /`" ] ; then
-  # handle paths from git diffs starting a/ or b/
-  if [ -f "$SEARCH" ] ; then
-    RESULTS[0]="$SEARCH"
-  elif [[ "$SEARCH" == a/* ]] || [[ "$SEARCH" == b/* ]] ; then
-    POTENTIAL_PATH="` echo $SEARCH | cut -c 3-`"
-    if [ -f "$POTENTIAL_PATH" ] ;
-      then RESULTS[0]=$POTENTIAL_PATH
-    fi;
-  fi;
-  if [ -z "${RESULTS[0]}" ] ; then
-    echo "error: no direct match for [$SEARCH]"
-    exit 1
-  fi;
-else
-  RESULTS=($(find -name "$SEARCH"))
+sel() {
+  RESULTS=("${@}")
 
   if [ -z "$RESULTS" ] ; then
     echo "error: no matches for [$SEARCH]"
@@ -31,8 +11,13 @@ else
 
   if [ -n "${RESULTS[1]}" ] ; then
     I=1
+    if [[ ${#RESULTS[@]} -gt 9 ]] ;
+      then A=2
+      else A=1
+    fi;
+
     for OPTION in "${RESULTS[@]}"; do
-      echo [$I] $OPTION
+      printf "[%${A}d] $OPTION\n" $I 
       I=$((I+1))
     done;
 
@@ -42,6 +27,50 @@ else
     SELECTION=1
     echo 1
   fi;
+
+  export SELECTION
+}
+
+if [[ "$1" == "-g" ]] ; then
+
+  # git helpers
+  if [ -n "$2" ] ; then
+    GIT_TAG=$2
+    R=($(git show --oneline --name-only $GIT_TAG | tail -n +2))
+  else
+    R=($(git status -s | awk '{ print $2; }'))
+  fi;
+
+  sel ${R[@]}
+
+else
+
+  if [ -n "`echo $1 | grep :`" ] ; then
+    SEARCH=`echo $1 | sed 's/:[^:]*$//'`
+    LINE_SELECTOR=:`echo $1| sed 's/^[^:]*://'`
+  else
+    SEARCH=$1
+  fi;
+
+  if [ -n "`echo $SEARCH | grep /`" ] ; then
+    # handle paths from git diffs starting a/ or b/
+    if [ -f "$SEARCH" ] ; then
+      RESULTS[0]="$SEARCH"
+    elif [[ "$SEARCH" == a/* ]] || [[ "$SEARCH" == b/* ]] ; then
+      POTENTIAL_PATH="` echo $SEARCH | cut -c 3-`"
+      if [ -f "$POTENTIAL_PATH" ] ;
+        then RESULTS[0]=$POTENTIAL_PATH
+      fi;
+    fi;
+    if [ -z "${RESULTS[0]}" ] ; then
+      echo "error: no direct match for [$SEARCH]"
+      exit 1
+    fi;
+  else
+    R=($(find -name "$SEARCH"))
+    sel ${R[@]}
+  fi;
+
 fi;
 
 COMMAND="vim ${RESULTS[$((SELECTION-1))]}$LINE_SELECTOR"
